@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minimal Note</title>
+    <style>
+        body {
+            background-color: #f0f0f0;
+            font-family: 'Segoe UI', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        /* Стикер */
+        .sticker {
+            background: #fff781;
+            width: 320px;
+            height: 320px;
+            padding: 20px;
+            box-shadow: 5px 5px 15px rgba(0,0,0,0.1);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            transform: rotate(-1deg);
+        }
+
+        textarea {
+            background: transparent;
+            border: none;
+            resize: none;
+            flex-grow: 1;
+            font-size: 18px;
+            outline: none;
+            font-family: 'Comic Sans MS', cursive, sans-serif; /* Для эффекта руки */
+        }
+
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 24px;
+            padding: 5px;
+            transition: transform 0.2s;
+        }
+
+        button:active { transform: scale(0.9); }
+
+        /* Меню */
+        .hamburger {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+        }
+
+        .sidebar {
+            position: fixed;
+            left: -300px;
+            top: 0;
+            width: 250px;
+            height: 100%;
+            background: white;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            transition: 0.3s;
+            padding: 60px 20px 20px;
+            overflow-y: auto;
+            z-index: 90;
+        }
+
+        .sidebar.open { left: 0; }
+
+        .note-item {
+            border-bottom: 1px solid #eee;
+            padding: 10px 0;
+            position: relative;
+        }
+
+        .note-title { font-weight: bold; font-size: 14px; margin-bottom: 4px; display: block; }
+        .note-preview { font-size: 12px; color: #666; }
+        
+        .delete-btn {
+            color: #ff4444;
+            font-size: 12px;
+            margin-top: 5px;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+
+    <button class="hamburger" onclick="toggleMenu()">☰</button>
+
+    <div class="sidebar" id="sidebar">
+        <h3>Заметки</h3>
+        <div id="notesList"></div>
+    </div>
+
+    <div class="sticker">
+        <textarea id="noteInput" placeholder="О чем думаете?"></textarea>
+        <div class="controls">
+            <button id="micBtn" title="Наговорить">🎤</button>
+            <button onclick="saveNote()" title="Сохранить">✅</button>
+        </div>
+    </div>
+
+    <script>
+        const noteInput = document.getElementById('noteInput');
+        const notesList = document.getElementById('notesList');
+        const sidebar = document.getElementById('sidebar');
+
+        // Голосовой ввод
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (SpeechRecognition) {
+            const recognition = new SpeechRecognition();
+            recognition.lang = 'ru-RU';
+            
+            document.getElementById('micBtn').onclick = () => {
+                recognition.start();
+                noteInput.placeholder = "Слушаю...";
+            };
+
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                noteInput.value += transcript;
+                noteInput.placeholder = "О чем думаете?";
+            };
+        }
+
+        function toggleMenu() {
+            sidebar.classList.toggle('open');
+            if(sidebar.classList.contains('open')) renderNotes();
+        }
+
+        function saveNote() {
+            const text = noteInput.value.trim();
+            if (!text) return;
+
+            const notes = JSON.parse(localStorage.getItem('my_minimal_notes') || '[]');
+            
+            // Имитация AI-заголовка (берем первые 25 символов и делаем "красиво")
+            const aiTitle = text.split(' ').slice(0, 3).join(' ').toUpperCase() + '...';
+
+            const newNote = {
+                id: Date.now(),
+                title: aiTitle,
+                content: text,
+                date: new Date().toLocaleString('ru-EE') // По Таллинну
+            };
+
+            notes.unshift(newNote);
+            localStorage.setItem('my_minimal_notes', JSON.stringify(notes));
+            
+            noteInput.value = '';
+            alert('Сохранено!');
+        }
+
+        function renderNotes() {
+            const notes = JSON.parse(localStorage.getItem('my_minimal_notes') || '[]');
+            notesList.innerHTML = notes.map(n => `
+                <div class="note-item">
+                    <span class="note-title">${n.title}</span>
+                    <div class="note-preview">${n.content.substring(0, 60)}...</div>
+                    <a href="#" class="delete-btn" onclick="deleteNote(${n.id})">Удалить</a>
+                </div>
+            `).join('');
+        }
+
+        function deleteNote(id) {
+            let notes = JSON.parse(localStorage.getItem('my_minimal_notes') || '[]');
+            notes = notes.filter(n => n.id !== id);
+            localStorage.setItem('my_minimal_notes', JSON.stringify(notes));
+            renderNotes();
+        }
+    </script>
+</body>
+</html>
