@@ -12,29 +12,37 @@
             padding: 0;
             height: 100vh;
             width: 100vw;
+            display: flex;
+            justify-content: center;
+            align-items: center;
             overflow: hidden;
-            position: relative;
         }
 
-        /* Идеальная центровка стикера */
+        /* Основной контейнер стикера */
         .sticker {
             background: #fff781;
             width: 85vw;
             max-width: 350px;
             height: 350px;
-            padding: 25px;
-            box-shadow: 10px 10px 25px rgba(0,0,0,0.15);
-            
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            /* Центрируем объект и добавляем легкий наклон */
-            transform: translate(-50%, -50%) rotate(-1.5deg);
-            
+            padding: 30px;
+            box-shadow: 15px 15px 30px rgba(0,0,0,0.1);
+            position: relative;
             display: flex;
             flex-direction: column;
             box-sizing: border-box;
             z-index: 5;
+            transform: rotate(-0.5deg); /* Минимальный наклон для живости */
+        }
+
+        /* Эффект второго листка под основным */
+        .sticker::before {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #fff781;
+            z-index: -1;
+            transform: rotate(1.5deg); 
+            box-shadow: 5px 5px 15px rgba(0,0,0,0.05);
         }
 
         /* Загнутый уголок */
@@ -58,15 +66,14 @@
             font-size: 20px;
             outline: none;
             font-family: 'Segoe UI', sans-serif;
-            line-height: 1.4;
-            padding-bottom: 30px; /* Чтобы текст не перекрывался уголком */
+            line-height: 1.5;
+            padding-bottom: 25px;
         }
 
         .controls {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding-top: 10px;
             z-index: 10;
         }
 
@@ -76,13 +83,20 @@
             cursor: pointer;
             font-size: 32px;
             padding: 10px;
-            transition: transform 0.1s;
+            transition: all 0.2s ease;
             -webkit-tap-highlight-color: transparent;
+            filter: grayscale(0.5); /* Немного приглушаем иконки в покое */
         }
 
-        button:active { transform: scale(0.9); }
+        button:active { transform: scale(0.8); }
 
-        /* Кнопка Меню */
+        /* Анимация подтверждения сохранения */
+        button.saved {
+            filter: grayscale(0) !important;
+            transform: scale(1.3);
+            text-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+        }
+
         .hamburger {
             position: fixed;
             top: 20px;
@@ -94,7 +108,6 @@
             cursor: pointer;
         }
 
-        /* Боковая панель */
         .sidebar {
             position: fixed;
             left: -320px;
@@ -116,18 +129,13 @@
             border-bottom: 1px solid #eee;
             padding: 15px 5px;
             cursor: pointer;
-            transition: background 0.2s;
         }
-
-        .note-item:hover { background: #fcfcfc; }
 
         .note-title { 
             font-weight: bold; 
             font-size: 13px; 
-            color: #111;
-            display: block; 
-            margin-bottom: 5px;
             text-transform: uppercase;
+            color: #111;
             letter-spacing: 0.5px;
         }
         
@@ -138,7 +146,6 @@
             -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
             overflow: hidden;
-            line-height: 1.3;
         }
         
         .delete-btn {
@@ -147,10 +154,7 @@
             margin-top: 10px;
             display: inline-block;
             text-decoration: underline;
-            text-transform: uppercase;
         }
-
-        h3 { margin-top: 0; font-size: 18px; color: #333; border-bottom: 2px solid #fff781; display: inline-block; }
     </style>
 </head>
 <body>
@@ -158,7 +162,7 @@
     <button class="hamburger" onclick="toggleMenu()">👍</button>
 
     <div class="sidebar" id="sidebar">
-        <h3>АРХИВ</h3>
+        <h3 style="margin-top:0; border-bottom: 2px solid #fff781; display: inline-block;">АРХИВ</h3>
         <div id="notesList"></div>
     </div>
 
@@ -166,7 +170,7 @@
         <textarea id="noteInput" placeholder="Пиши или диктуй..."></textarea>
         <div class="controls">
             <button id="micBtn" title="Наговорить">🎤</button>
-            <button onclick="saveNote()" title="Сохранить">✅</button>
+            <button id="saveBtn" onclick="saveNote()" title="Сохранить">✅</button>
         </div>
     </div>
 
@@ -174,19 +178,19 @@
         const noteInput = document.getElementById('noteInput');
         const notesList = document.getElementById('notesList');
         const sidebar = document.getElementById('sidebar');
+        const saveBtn = document.getElementById('saveBtn');
 
-        // Инициализация Speech Recognition
+        // Speech Recognition
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (SpeechRecognition) {
             const recognition = new SpeechRecognition();
             recognition.lang = 'ru-RU';
-            recognition.continuous = false;
             
             document.getElementById('micBtn').onclick = () => {
                 try {
                     recognition.start();
                     noteInput.placeholder = "Слушаю...";
-                } catch(e) { console.log("Уже запущено"); }
+                } catch(e) {}
             };
 
             recognition.onresult = (event) => {
@@ -206,29 +210,28 @@
             if (!text) return;
 
             const notes = JSON.parse(localStorage.getItem('my_minimal_notes') || '[]');
-            
-            // Генерация названия (первые 3 слова)
             const words = text.split(/\s+/).filter(w => w.length > 0);
             let aiTitle = words.slice(0, 3).join(' ').toUpperCase();
-            if (!aiTitle) aiTitle = "НОВАЯ МЫСЛЬ";
 
             const newNote = {
                 id: Date.now(),
-                title: aiTitle,
+                title: aiTitle || "ЗАМЕТКА",
                 content: text
             };
 
             notes.unshift(newNote);
             localStorage.setItem('my_minimal_notes', JSON.stringify(notes));
             
+            // Визуальное подтверждение вместо alert
             noteInput.value = '';
-            alert('Сохранено');
+            saveBtn.classList.add('saved');
+            setTimeout(() => saveBtn.classList.remove('saved'), 600);
         }
 
         function renderNotes() {
             const notes = JSON.parse(localStorage.getItem('my_minimal_notes') || '[]');
             if (notes.length === 0) {
-                notesList.innerHTML = '<p style="color: #999; font-size: 14px;">Пока нет записей</p>';
+                notesList.innerHTML = '<p style="color: #999">Архив пуст</p>';
                 return;
             }
             notesList.innerHTML = notes.map(n => `
@@ -250,7 +253,7 @@
         }
 
         function deleteNote(id) {
-            if(!confirm('Удалить эту заметку?')) return;
+            if(!confirm('Удалить?')) return;
             let notes = JSON.parse(localStorage.getItem('my_minimal_notes') || '[]');
             notes = notes.filter(n => n.id !== id);
             localStorage.setItem('my_minimal_notes', JSON.stringify(notes));
