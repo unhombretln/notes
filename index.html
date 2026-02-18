@@ -2,46 +2,42 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Minimal Note</title>
     <style>
         body {
             background-color: #e0e0e0;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            display: flex;
-            justify-content: center; 
-            align-items: center;     
-            height: 100vh;           
             margin: 0;
             padding: 0;
+            height: 100vh;
+            width: 100vw;
             overflow: hidden;
+            position: relative;
         }
 
-        /* Контейнер для стикера, чтобы центровка была идеальной */
-        .sticker-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            width: 100%;
-            height: 100%;
-        }
-
+        /* Идеальная центровка стикера */
         .sticker {
             background: #fff781;
-            width: 85vw;             
-            max-width: 350px;        
+            width: 85vw;
+            max-width: 350px;
             height: 350px;
             padding: 25px;
-            box-shadow: 10px 10px 20px rgba(0,0,0,0.1);
-            position: relative;
+            box-shadow: 10px 10px 25px rgba(0,0,0,0.15);
+            
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            /* Центрируем объект и добавляем легкий наклон */
+            transform: translate(-50%, -50%) rotate(-1.5deg);
+            
             display: flex;
             flex-direction: column;
-            transform: rotate(-1.5deg); /* Чуть усилил наклон для стиля */
-            z-index: 5;
             box-sizing: border-box;
+            z-index: 5;
         }
 
-        /* Эффект загнутого уголка */
+        /* Загнутый уголок */
         .sticker::after {
             content: "";
             position: absolute;
@@ -49,10 +45,9 @@
             right: 0;
             border-width: 0 0 35px 35px;
             border-style: solid;
-            border-color: transparent transparent #e0e0e0 #f0e665; /* Цвет фона и тень сгиба */
-            box-shadow: -2px -2px 5px rgba(0,0,0,0.05);
+            border-color: transparent transparent #e0e0e0 #f0e665;
             display: block;
-            width: 0;
+            z-index: 2;
         }
 
         textarea {
@@ -64,7 +59,7 @@
             outline: none;
             font-family: 'Segoe UI', sans-serif;
             line-height: 1.4;
-            padding-bottom: 20px;
+            padding-bottom: 30px; /* Чтобы текст не перекрывался уголком */
         }
 
         .controls {
@@ -72,7 +67,7 @@
             justify-content: space-between;
             align-items: center;
             padding-top: 10px;
-            z-index: 10; /* Поверх уголка */
+            z-index: 10;
         }
 
         button {
@@ -80,15 +75,16 @@
             border: none;
             cursor: pointer;
             font-size: 32px;
-            padding: 5px;
+            padding: 10px;
             transition: transform 0.1s;
             -webkit-tap-highlight-color: transparent;
         }
 
         button:active { transform: scale(0.9); }
 
+        /* Кнопка Меню */
         .hamburger {
-            position: fixed; 
+            position: fixed;
             top: 20px;
             left: 20px;
             z-index: 100;
@@ -98,6 +94,7 @@
             cursor: pointer;
         }
 
+        /* Боковая панель */
         .sidebar {
             position: fixed;
             left: -320px;
@@ -106,10 +103,11 @@
             height: 100%;
             background: white;
             box-shadow: 5px 0 15px rgba(0,0,0,0.1);
-            transition: 0.3s ease;
+            transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             padding: 80px 20px 20px;
             overflow-y: auto;
             z-index: 95;
+            box-sizing: border-box;
         }
 
         .sidebar.open { left: 0; }
@@ -118,33 +116,41 @@
             border-bottom: 1px solid #eee;
             padding: 15px 5px;
             cursor: pointer;
+            transition: background 0.2s;
         }
+
+        .note-item:hover { background: #fcfcfc; }
 
         .note-title { 
             font-weight: bold; 
-            font-size: 14px; 
-            color: #222;
+            font-size: 13px; 
+            color: #111;
             display: block; 
             margin-bottom: 5px;
             text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
         
         .note-preview { 
             font-size: 13px; 
-            color: #555; 
+            color: #666; 
             display: -webkit-box;
             -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
             overflow: hidden;
+            line-height: 1.3;
         }
         
         .delete-btn {
             color: #d32f2f;
-            font-size: 12px;
+            font-size: 11px;
             margin-top: 10px;
             display: inline-block;
             text-decoration: underline;
+            text-transform: uppercase;
         }
+
+        h3 { margin-top: 0; font-size: 18px; color: #333; border-bottom: 2px solid #fff781; display: inline-block; }
     </style>
 </head>
 <body>
@@ -152,17 +158,15 @@
     <button class="hamburger" onclick="toggleMenu()">👍</button>
 
     <div class="sidebar" id="sidebar">
-        <h3 style="margin-top:0">АРХИВ</h3>
+        <h3>АРХИВ</h3>
         <div id="notesList"></div>
     </div>
 
-    <div class="sticker-container">
-        <div class="sticker">
-            <textarea id="noteInput" placeholder="Пиши или диктуй..."></textarea>
-            <div class="controls">
-                <button id="micBtn" title="Наговорить">🎤</button>
-                <button onclick="saveNote()" title="Сохранить">✅</button>
-            </div>
+    <div class="sticker">
+        <textarea id="noteInput" placeholder="Пиши или диктуй..."></textarea>
+        <div class="controls">
+            <button id="micBtn" title="Наговорить">🎤</button>
+            <button onclick="saveNote()" title="Сохранить">✅</button>
         </div>
     </div>
 
@@ -171,15 +175,18 @@
         const notesList = document.getElementById('notesList');
         const sidebar = document.getElementById('sidebar');
 
-        // Голосовой ввод
+        // Инициализация Speech Recognition
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (SpeechRecognition) {
             const recognition = new SpeechRecognition();
             recognition.lang = 'ru-RU';
+            recognition.continuous = false;
             
             document.getElementById('micBtn').onclick = () => {
-                recognition.start();
-                noteInput.placeholder = "Слушаю...";
+                try {
+                    recognition.start();
+                    noteInput.placeholder = "Слушаю...";
+                } catch(e) { console.log("Уже запущено"); }
             };
 
             recognition.onresult = (event) => {
@@ -200,13 +207,14 @@
 
             const notes = JSON.parse(localStorage.getItem('my_minimal_notes') || '[]');
             
-            // "AI" заголовок: берем первые 3 слова
-            const words = text.split(/\s+/);
-            const aiTitle = words.slice(0, 3).join(' ').toUpperCase();
+            // Генерация названия (первые 3 слова)
+            const words = text.split(/\s+/).filter(w => w.length > 0);
+            let aiTitle = words.slice(0, 3).join(' ').toUpperCase();
+            if (!aiTitle) aiTitle = "НОВАЯ МЫСЛЬ";
 
             const newNote = {
                 id: Date.now(),
-                title: aiTitle || "ЗАМЕТКА",
+                title: aiTitle,
                 content: text
             };
 
@@ -220,7 +228,7 @@
         function renderNotes() {
             const notes = JSON.parse(localStorage.getItem('my_minimal_notes') || '[]');
             if (notes.length === 0) {
-                notesList.innerHTML = '<p style="color: #999">Пусто</p>';
+                notesList.innerHTML = '<p style="color: #999; font-size: 14px;">Пока нет записей</p>';
                 return;
             }
             notesList.innerHTML = notes.map(n => `
@@ -242,7 +250,7 @@
         }
 
         function deleteNote(id) {
-            if(!confirm('Удалить?')) return;
+            if(!confirm('Удалить эту заметку?')) return;
             let notes = JSON.parse(localStorage.getItem('my_minimal_notes') || '[]');
             notes = notes.filter(n => n.id !== id);
             localStorage.setItem('my_minimal_notes', JSON.stringify(notes));
